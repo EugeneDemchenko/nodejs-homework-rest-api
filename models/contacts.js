@@ -34,8 +34,6 @@ const addContact = async (body) => {
 
 const updateContact = async (contactId, body) => {
   let contacts = await listContacts();
-  // let newContact = contacts.find((contact) => contact.id === contactId);
-  // newContact = { id: contactId, ...body };
   contacts.forEach((contact) => {
     if (contact.id === contactId) {
       contact.name = body.name;
