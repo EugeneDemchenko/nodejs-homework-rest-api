@@ -12,7 +12,7 @@ const connection = mongoose.connect(uriDb);
 connection
   .then(() => {
     console.log("Database connection successful");
-    app.listen(4040, function () {
+    app.listen(PORT, function () {
       console.log(`Server running. Use our API on port: ${PORT}`);
     });
   })
