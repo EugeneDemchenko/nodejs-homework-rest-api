@@ -7,8 +7,8 @@ const {
   removeContact,
   createContact,
   updateContact,
-  updateStatusContact,
-} = require("../../service/index");
+} = require("../../service/controllers/contacts");
+const { userMiddleware } = require("../../middlewares/user");
 
 const schema = Joi.object({
   name: Joi.string().required(),
@@ -19,14 +19,14 @@ const favoriteSchema = Joi.object({
   favorite: Joi.boolean().required(),
 });
 
-router.get("/", async (req, res, next) => {
-  const contact = await getAllcontacts();
+router.get("/", userMiddleware, async (req, res, next) => {
+  const contact = await getAllcontacts(req.user._id);
   res.send(contact);
 });
 
-router.get("/:contactId", async (req, res, next) => {
+router.get("/:contactId", userMiddleware, async (req, res, next) => {
   const { contactId } = req.params;
-  const contact = await getContactById(contactId);
+  const contact = await getContactById(contactId, req.user._id);
   if (!contact) {
     res.status(404).json({
       status: "error",
@@ -37,7 +37,40 @@ router.get("/:contactId", async (req, res, next) => {
   res.send(contact);
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", userMiddleware, async (req, res, next) => {
+  const { error } = schema.validate(req.body);
+  if (error) {
+    res.status(400).json({
+      status: "error",
+      code: 400,
+      message: "missing required name field",
+    });
+    return;
+  }
+  const contact = await createContact({
+    ...req.body,
+    owner: req.user._id,
+    favorite: req.body.favorite,
+  });
+  res.status(201).json({
+    status: "success",
+    code: 201,
+    data: {
+      contact,
+    },
+  });
+});
+
+router.delete("/:contactId", userMiddleware, async (req, res, next) => {
+  const { contactId } = req.params;
+  const contact = await removeContact(contactId, req.user._id);
+  res.status(200).json({
+    status: "contact deleted",
+  });
+});
+
+router.put("/:contactId", userMiddleware, async (req, res, next) => {
+  const { contactId } = req.params;
   const { name, email, phone } = req.body;
   const validationResult = schema.validate(req.body);
   if (validationResult.error) {
@@ -46,27 +79,7 @@ router.post("/", async (req, res, next) => {
       message: validationResult.error.details[0].message,
     });
   }
-  const contact = await createContact(req.body);
-  res.send(contact).status(201);
-});
-
-router.delete("/:contactId", async (req, res, next) => {
-  const { contactId } = req.params;
-  const contact = await removeContact(contactId);
-  res.send(contact);
-});
-
-router.put("/:contactId", async (req, res, next) => {
-  const { contactId } = req.params;
-  const { name, email, phone } = req.body;
-  const validationResult = schema.validate(req.body);
-  if (validationResult.error) {
-    return res.status(400).json({
-      status: "error",
-      message: validationResult.error.details[0].message,
-    });
-  }
-  const contact = await updateContact(contactId, req.body);
+  const contact = await updateContact(contactId, req.body, req.user._id);
   if (!contact) {
     return res.status(404).json({
       status: "error",
@@ -75,6 +88,7 @@ router.put("/:contactId", async (req, res, next) => {
   }
   res.send(contact).status(200);
 });
+
 router.patch("/:contactId/favorite", async (req, res, next) => {
   const { contactId } = req.params;
   const { favorite } = req.body;
@@ -85,7 +99,7 @@ router.patch("/:contactId/favorite", async (req, res, next) => {
       message: "missing field favorite",
     });
   }
-  const contact = await updateContact(contactId, req.body);
+  const contact = await updateContact(contactId, req.body, req.user._id);
   if (!contact) {
     return res.status(404).json({
       status: "error",
