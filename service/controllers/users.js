@@ -2,6 +2,8 @@ const User = require("../schemas/userSchema");
 const { generateToken } = require("../../token");
 const bcrypt = require("bcrypt");
 const Joi = require("joi");
+const Jimp = require("jimp");
+const gravatar = require("gravatar");
 
 const registerSchema = Joi.object({
   name: Joi.string().required(),
@@ -22,6 +24,7 @@ const getUsers = async (req, res) => {
 const signup = async (req, res) => {
   const { name, email, password } = req.body;
   const validationResult = registerSchema.validate(req.body);
+  const avatarUrl = gravatar.url(email);
   if (validationResult.error) {
     return res.status(400).json({
       status: "error",
@@ -39,6 +42,7 @@ const signup = async (req, res) => {
       name,
       email,
       password: await bcrypt.hash(password, 10),
+      avatarUrl,
     });
     res.status(201).send(newUser);
   }
@@ -109,10 +113,20 @@ const getProfile = async (req, res) => {
     .end();
 };
 
+const updateImage = async (req, res) => {
+  const { _id } = req.user;
+  const { path } = req.file;
+  const image = await Jimp.read(path);
+  image.resize(250, 250).write(`public/avatars/${_id}.png`);
+  await User.findByIdAndUpdate(_id, { avatarUrl: `/avatars/${_id}` });
+  res.status(200).json({ avatarUrl: `/avatars/${_id}` });
+};
+
 module.exports = {
   getUsers,
   signup,
   login,
   logout,
   getProfile,
+  updateImage,
 };
