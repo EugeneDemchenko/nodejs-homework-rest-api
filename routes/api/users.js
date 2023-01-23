@@ -10,6 +10,8 @@ const {
   logout,
   getProfile,
   updateImage,
+  verifyUser,
+  reSendMail,
 } = require("../../service/controllers/users");
 
 router.get("/", getUsers);
@@ -19,5 +21,7 @@ router.post("/register", signup); // /users/register
 router.post("/logout", userMiddleware, logout); // /users/logout
 router.get("/current", userMiddleware, getProfile); // /users/current
 router.patch("/avatars", userMiddleware, uploads.single("avatar"), updateImage);
+router.get("/verify/:verificationToken", verifyUser);
+router.post("/verify", reSendMail);
 
 module.exports = router;
